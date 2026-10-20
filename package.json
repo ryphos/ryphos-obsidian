@@ -1,0 +1,24 @@
+{
+  "name": "ryphos-obsidian",
+  "version": "0.1.0",
+  "description": "Plugin de Obsidian para sincronizar Memorias de Ryphos.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "node --import tsx --test test/*.test.ts",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
+  },
+  "dependencies": {
+    "ignore": "^6.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "1.14.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.7.2"
+  }
+}
