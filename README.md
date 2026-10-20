@@ -13,7 +13,7 @@ Funciona en escritorio y en móvil.
 
 ### Con BRAT
 1. Instala el plugin **BRAT** (Obsidian42 - BRAT) desde Complementos de la comunidad.
-2. BRAT → «Add Beta plugin» → pega la URL del repositorio de GitHub de este plugin.
+2. BRAT → «Add Beta plugin» → pega `https://github.com/ryphos/ryphos-obsidian`.
 3. Activa «Ryphos» en Complementos de la comunidad.
 
 ## Conectar con tu cuenta
