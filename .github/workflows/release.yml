@@ -1,0 +1,53 @@
+name: Release
+
+# Publica una versión al subir una etiqueta x.y.z (igual que "version" en manifest.json).
+# Compila y prueba en GitHub, firma main.js y manifest.json con una atestación de
+# procedencia (SLSA, actions/attest-build-provenance) y crea la release con esos ficheros.
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Comprobar que la etiqueta coincide con manifest.json
+        run: |
+          manifest_version=$(node -p "require('./manifest.json').version")
+          if [ "$manifest_version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::La etiqueta $GITHUB_REF_NAME no coincide con manifest.json ($manifest_version)"
+            exit 1
+          fi
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+
+      - name: Atestación de procedencia
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+
+      - name: Crear la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" main.js manifest.json \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Compilada y firmada en GitHub Actions (atestación de procedencia de main.js y manifest.json)."

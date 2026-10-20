@@ -94,3 +94,7 @@ npm run build   # genera main.js
 npm test        # node:test + tsx (decisión, rutas, paridad de hash, sync con servidor y bóveda falsos)
 ```
 El hash de contenido es SHA-256 en JS puro, idéntico al del servidor y al del CLI (`ryphos`): hay un test de paridad con los mismos fixtures.
+
+## Publishing a release (maintainers)
+
+`npm version patch` (or `minor`) updates `package.json`, `manifest.json` and `versions.json`, commits and creates the `x.y.z` tag. `git push --follow-tags` then triggers `.github/workflows/release.yml`, which builds, tests, attests the provenance of `main.js` and `manifest.json` and creates the GitHub release. Never upload release files by hand.
