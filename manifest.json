@@ -1,9 +1,9 @@
 {
   "id": "ryphos",
   "name": "Ryphos",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minAppVersion": "1.5.0",
-  "description": "Sincroniza una memoria de Ryphos con una carpeta de tu bóveda (Markdown, ambos sentidos).",
+  "description": "Sync a Ryphos memory with a folder in your vault: Markdown both ways, with conflict copies instead of overwrites.",
   "author": "Ryphos",
   "authorUrl": "https://ryphos.com",
   "isDesktopOnly": false

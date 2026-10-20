@@ -41,7 +41,7 @@ export default class RyphosPlugin extends Plugin {
     private statusEl: HTMLElement | null = null;
     private running = false;
     private again = false;
-    private debounce: ReturnType<typeof setTimeout> | null = null;
+    private debounce: number | null = null;
     private pollId: number | null = null;
     private lastError = '';
     private lastConflicts = 0;
@@ -65,7 +65,7 @@ export default class RyphosPlugin extends Plugin {
     }
 
     onunload(): void {
-        if (this.debounce) clearTimeout(this.debounce);
+        if (this.debounce !== null) window.clearTimeout(this.debounce);
         if (this.pollId !== null) window.clearInterval(this.pollId);
     }
 
@@ -154,8 +154,8 @@ export default class RyphosPlugin extends Plugin {
 
     private kick(_reason: string, delay: number): void {
         if (!this.configured()) return;
-        if (this.debounce) clearTimeout(this.debounce);
-        this.debounce = setTimeout(() => { void this.syncNow(false); }, delay);
+        if (this.debounce !== null) window.clearTimeout(this.debounce);
+        this.debounce = window.setTimeout(() => { void this.syncNow(false); }, delay);
     }
 
     // ---------- sincronía ----------
@@ -203,7 +203,7 @@ export default class RyphosPlugin extends Plugin {
         this.lastError = '';
         this.store.lastSync = Date.now();
         await this.persist();
-        for (const w of rep.warnings) console.warn(`[Ryphos] ${w}`);
+        if (manual && rep.warnings.length) new Notice(`Ryphos: ${rep.warnings.length} aviso(s). ${rep.warnings[0]}`, 8000);
         if (rep.serverWarnings.length) new Notice(`Ryphos: ${rep.serverWarnings.slice(0, 3).join(' · ')}`, 10_000);
         if (rep.conflicts.length && rep.conflicts.length !== this.lastConflicts) {
             new Notice(`Ryphos: ${rep.conflicts.length} conflicto(s). Revisa los ficheros *.conflict-*.md junto a los originales.`, 10_000);
@@ -219,7 +219,7 @@ export default class RyphosPlugin extends Plugin {
 
     private fail(msg: string, manual: boolean): void {
         this.lastError = msg;
-        console.warn(`[Ryphos] ${msg}`);
+        console.error(`[Ryphos] ${msg}`);
         if (manual) new Notice(`Ryphos: ${msg}`, 8000);
     }
 
@@ -284,6 +284,8 @@ class RyphosSettingTab extends PluginSettingTab {
                 const url = v.trim().replace(/\/+$/, '');
                 try { assertSecureApiUrl(url); s.apiUrl = url; await this.plugin.applySettings(); } catch { /* se valida al guardar un valor correcto */ }
             }));
+
+        new Setting(containerEl).setName('Synchronization').setHeading();
 
         const memSetting = new Setting(containerEl)
             .setName('Memoria a sincronizar')

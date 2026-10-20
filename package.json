@@ -1,6 +1,6 @@
 {
   "name": "ryphos-obsidian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Plugin de Obsidian para sincronizar Memorias de Ryphos.",
   "main": "main.js",
   "private": true,
@@ -20,5 +20,6 @@
     "obsidian": "1.14.4",
     "tsx": "^4.23.15",
     "typescript": "^5.7.2"
-  }
+  },
+  "license": "MIT"
 }

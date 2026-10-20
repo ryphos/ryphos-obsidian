@@ -1,4 +1,36 @@
-# Ryphos para Obsidian
+# Ryphos for Obsidian
+
+Syncs a **Ryphos memory** with a folder in your vault, in both directions. What you write in Obsidian shows up in Ryphos (and is available to your AI assistant);
+what your AI saves or you edit on the web shows up in your vault. Works on desktop and mobile.
+
+- Markdown files only; changes are synced shortly after you edit, plus a periodic check (every 30 s by default).
+- If the same note changes in two places at once, nothing is overwritten: the other version is saved as `note.conflict-<device>.md`.
+- Files are only read and written inside the folder you choose.
+
+## Install
+- **Community plugins**: Settings, Community plugins, search for "Ryphos".
+- **Manual**: copy `main.js` and `manifest.json` to `<vault>/.obsidian/plugins/ryphos/` and enable it.
+- **BRAT**: add this repository as a beta plugin.
+
+## Connect
+1. In Ryphos open Memories, Connect, Obsidian and copy the connection code.
+2. In Obsidian open the plugin settings, paste the code, press Load and pick the memory.
+3. The first sync shows how many notes will be downloaded and uploaded and asks for confirmation.
+
+## Network use and account
+- **Requires a Ryphos account.** The free plan includes 1 memory and 200 pages; paid plans allow more.
+- The plugin connects **only to `https://api.ryphos.com/mcp`** (or the API URL you configure; plain http is accepted only for localhost) to list your memories and to read and write the pages of the memory you selected.
+- It **sends the content of the `.md` files** inside the synced folder (and their paths) to Ryphos, and downloads the pages of that memory into the folder. Nothing outside the folder is read.
+- **No telemetry and no analytics.** There are no other network requests.
+- **Where the connection code is stored**: in the Obsidian secret storage (Obsidian 1.11.4 or newer). On older versions it is stored in `.obsidian/plugins/ryphos/data.json` inside your vault, so exclude that file if you sync your `.obsidian` folder. You can revoke the code in Ryphos at any time.
+- Server redirects (3xx) are treated as errors so the code is never sent to an unexpected destination.
+
+License: MIT.
+
+---
+
+# Versión en español
+
 
 Plugin que sincroniza una **memoria de Ryphos** con una carpeta de tu bóveda de Obsidian, en ambos sentidos:
 lo que escribes en Obsidian aparece en Ryphos (y lo ve tu IA) y lo que guarda tu IA o editas en la web aparece en Obsidian.
@@ -50,8 +82,7 @@ Trata el código como una contraseña. **Dónde se guarda**: con Obsidian 1.11.4
 ## Seguridad
 - Nunca se escribe fuera de la carpeta configurada; las rutas del servidor se validan (sin `..`, absolutas, ocultas, nombres reservados de Windows, colisiones de mayúsculas).
 - Nunca se sincronizan ficheros de instrucciones de agentes (`CLAUDE.md`, `AGENTS.md`, `.cursor*`, `.github*`…), `.obsidian/`, `.trash/`, adjuntos que no sean `.md` ni ficheros ocultos.
-- Puedes excluir más con `.ryphosignore` dentro de la carpeta (sintaxis `.gitignore`).
-- Si la carpeta contiene un `.git` propio, la sincronía se niega.
+- La Vault API de Obsidian no ve ficheros ocultos, así que `.ryphosignore` y la comprobación de `.git` no aplican en el plugin (los ocultos nunca se sincronizan). Usa una carpeta dedicada.
 - Cualquier respuesta 3xx se trata como error (Obsidian no deja inspeccionar las redirecciones y no queremos reenviar la clave a un destino inesperado).
 - Si el servidor avisa de secretos enmascarados al guardar una nota, se muestra un aviso.
 - La clave solo viaja en la cabecera `Authorization` a tu API (HTTPS) y nunca se escribe en la consola.
