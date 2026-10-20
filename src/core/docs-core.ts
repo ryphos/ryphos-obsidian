@@ -10,7 +10,7 @@ import { sha256Hex } from './sha256';
  * Copia EXACTA de `splitFrontmatter` del servidor (pandup-manager-api wiki/util/wiki-markdown.util.ts).
  */
 export function stripFrontmatter(markdown: string): string {
-    const text = markdown.replace(/\r\n?/g, '\n').replace(/^﻿/, '');
+    const text = markdown.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '');
     if (!text.startsWith('---\n')) return text;
     const end = text.indexOf('\n---', 3);
     if (end < 0) return text;
@@ -49,7 +49,7 @@ export function segmentProblem(seg: string): string | null {
     if (seg === '' || seg === '.' || seg === '..') return 'segmento vacío o relativo';
     if (seg.startsWith('.')) return 'nombre oculto (empieza por ".")';
     if (isAgentInstructionName(seg)) return 'fichero de instrucciones de agentes';
-    // eslint-disable-next-line no-control-regex
+    // eslint-disable-next-line no-control-regex -- los caracteres de control se rechazan a propósito en nombres de fichero
     if (/[<>:"|?*\u0000-\u001f]/.test(seg)) return 'caracteres no válidos';
     if (seg.endsWith(' ') || seg.endsWith('.')) return 'termina en espacio o punto';
     if (WIN_RESERVED.test(seg.split('.')[0])) return 'nombre reservado de Windows';
@@ -85,16 +85,18 @@ export function conflictPath(rel: string, host: string): string {
 }
 
 /**
- * Predicado de ignorados: .obsidian/, .trash/, .ryphos, .git, no .md, *.conflict-*.md y .ryphosignore.
+ * Predicado de ignorados: carpeta de configuración, .trash/, .ryphos, .git, no .md, *.conflict-*.md y .ryphosignore.
  * `isDir` evita aplicar la regla de extensión a carpetas.
  */
-export function makeIgnore(ryphosIgnoreText = ''): (rel: string, isDir?: boolean) => boolean {
+export function makeIgnore(ryphosIgnoreText = '', configDir = ''): (rel: string, isDir?: boolean) => boolean {
+    // carpeta de configuración de la bóveda (vault.configDir): su último segmento nunca se sincroniza
+    const configName = configDir.split('/').filter(Boolean).pop() || '';
     const ig = ignore();
     ig.add(['.ryphos', '.git']);
     ig.add(ryphosIgnoreText);
     return (rel: string, isDir = false) => {
         const segs = rel.split('/');
-        if (segs.includes('.obsidian') || segs.includes('.trash')) return true;
+        if ((configName && segs.includes(configName)) || segs.includes('.trash')) return true;
         if (segs.some((s) => s.startsWith('.') || isAgentInstructionName(s))) return true; // ocultos y agentes: nunca se sincronizan
         if (isDir) return ig.ignores(`${rel}/`);
         if (!rel.toLowerCase().endsWith('.md')) return true;
@@ -143,7 +145,7 @@ export function decide(state: StateFile | undefined, local: LocalInfo | undefine
     if (localDeleted && remoteDeleted) return 'forget';
     if (localDeleted) return remoteChanged ? 'pull' : 'delete-remote'; // si el remoto cambió, nadie pierde trabajo: se restaura
     if (remoteDeleted) return localChanged ? 'push' : 'delete-local'; // editado localmente → se vuelve a crear
-    if (localChanged && remoteChanged) return local!.hash === remoteLive!.hash ? 'adopt' : 'conflict';
+    if (localChanged && remoteChanged) return local.hash === remoteLive.hash ? 'adopt' : 'conflict';
     if (localChanged) return 'push';
     if (remoteChanged) return 'pull';
     return 'noop';

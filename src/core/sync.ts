@@ -52,6 +52,8 @@ export interface SyncOptions {
     host: string;
     mode?: Mode;
     dryRun?: boolean;
+    /** `vault.configDir` de la bóveda (se ignora siempre). */
+    configDir?: string;
     /** Primera sincronía de esta carpeta: se llama antes de tocar nada; false cancela. */
     fresh?: boolean;
     confirmFirstSync?: (info: { pull: number; push: number; total: number }) => Promise<boolean>;
@@ -114,7 +116,7 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
     }
     let ignoreText = '';
     if (await fs.exists('.ryphosignore')) { try { ignoreText = await fs.read('.ryphosignore'); } catch { /* sin ignore */ } }
-    const isIgnored = makeIgnore(ignoreText);
+    const isIgnored = makeIgnore(ignoreText, opts.configDir || '');
     const local = await scanLocal(fs, isIgnored, (m) => warnings.push(m));
 
     const hadState = Object.keys(state.files).length > 0;
@@ -197,11 +199,11 @@ export async function runSync(opts: SyncOptions): Promise<SyncReport> {
                     const r = await remote.read(memoryId, { path: rel });
                     id = r.id; revision = r.revision;
                 }
-                state.files[rel] = { id, revision: revision as number, hash: hashMarkdown(markdown) };
+                state.files[rel] = { id, revision: revision, hash: hashMarkdown(markdown) };
                 return undefined;
             }
             case 'delete-remote': {
-                await remote.remove(memoryId, rel, st!.revision);
+                await remote.remove(memoryId, rel, st.revision);
                 delete state.files[rel];
                 return undefined;
             }

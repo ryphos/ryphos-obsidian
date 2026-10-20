@@ -2,7 +2,7 @@
   "id": "ryphos",
   "name": "Ryphos",
   "version": "0.1.2",
-  "minAppVersion": "1.5.0",
+  "minAppVersion": "1.6.6",
   "description": "Sync a Ryphos memory with a folder in your vault: Markdown both ways, with conflict copies instead of overwrites.",
   "author": "Ryphos",
   "authorUrl": "https://ryphos.com",

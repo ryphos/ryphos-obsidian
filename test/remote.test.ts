@@ -1,3 +1,5 @@
+// En Obsidian existe `window`; en node se simula para los tests.
+(globalThis as unknown as { window: unknown }).window = globalThis;
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { McpMemoryRemote, RpcClient, HttpPost, assertSecureApiUrl, parseMemories, parseRpcBody } from '../src/remote';

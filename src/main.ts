@@ -1,5 +1,6 @@
 import {
     App, ButtonComponent, Modal, Notice, Platform, Plugin, PluginSettingTab, Setting, TAbstractFile, requestUrl,
+    type SettingDefinition, type SettingDefinitionItem,
 } from 'obsidian';
 import type { SyncState } from './core/docs-core';
 import { makeIgnore } from './core/docs-core';
@@ -147,7 +148,7 @@ export default class RyphosPlugin extends Plugin {
         if (!this.configured()) return;
         const rels = [path, oldPath].filter((p): p is string => !!p).map((p) => relativeInside(this.settings.folder, p)).filter((r): r is string => r !== null);
         if (!rels.length) return;
-        const ignored = makeIgnore();
+        const ignored = makeIgnore('', this.app.vault.configDir);
         if (rels.every((r) => ignored(r))) return;
         this.kick('cambio local', DEBOUNCE_MS);
     }
@@ -194,6 +195,7 @@ export default class RyphosPlugin extends Plugin {
                 remote: new McpMemoryRemote(this.rpc()),
                 host: this.settings.deviceName,
                 fresh,
+                configDir: this.app.vault.configDir,
                 confirmFirstSync: (info) => new ConfirmFirstSync(this.app, folder, info).ask(),
             });
         } catch (e) {
@@ -246,7 +248,7 @@ class ConfirmFirstSync extends Modal {
     }
     private finish(v: boolean): void { if (this.done) return; this.done = true; this.resolve(v); this.close(); }
     onOpen(): void {
-        this.titleEl.setText('Primera sincronización con Ryphos');
+        this.titleEl.setText('Primera sincronización');
         this.contentEl.createEl('p', {
             text: `Se bajarán ${this.info.pull} y se subirán ${this.info.push} nota(s) entre la memoria y la carpeta «${this.folder}». No se tocará nada fuera de esa carpeta.`,
         });
@@ -258,40 +260,40 @@ class ConfirmFirstSync extends Modal {
 }
 
 class RyphosSettingTab extends PluginSettingTab {
+    private declarative = false;
     constructor(app: App, private readonly plugin: RyphosPlugin) { super(app, plugin); }
 
-    display(): void {
-        const { containerEl } = this;
-        containerEl.empty();
+    private keyDesc(): string {
+        if (this.plugin.usesSecretStorage()) {
+            return 'En Ryphos: Memorias → Conectar → Obsidian. Se guarda en el almacén de secretos de Obsidian (fuera de la bóveda).';
+        }
+        const file = `${this.plugin.manifest.dir ?? `${this.app.vault.configDir}/plugins/ryphos`}/data.json`;
+        return `En Ryphos: Memorias → Conectar → Obsidian. Se guarda en ${file}. Si sincronizas la carpeta de configuración con iCloud, Dropbox, Obsidian Sync o git, la clave viaja con ella.`;
+    }
+
+    private rowKey(setting: Setting): void {
+        setting.setName('Código de conexión').setDesc(this.keyDesc()).addText((t) => {
+            t.inputEl.type = 'password';
+            t.inputEl.autocomplete = 'off';
+            t.setPlaceholder('Pega el código').setValue(this.plugin.getKey()).onChange(async (v) => { await this.plugin.setKey(v.trim()); await this.plugin.applySettings(); });
+        });
+    }
+
+    private rowApiUrl(setting: Setting): void {
         const s = this.plugin.settings;
+        setting.setName('URL de la API').setDesc('Por defecto https://api.ryphos.com').addText((t) => t.setValue(s.apiUrl).onChange(async (v) => {
+            const url = v.trim().replace(/\/+$/, '');
+            try { assertSecureApiUrl(url); s.apiUrl = url; await this.plugin.applySettings(); } catch { /* se valida al guardar un valor correcto */ }
+        }));
+    }
 
-        const keyDesc = this.plugin.usesSecretStorage()
-            ? 'En Ryphos: Memorias → Conectar → Obsidian. Se guarda en el almacén de secretos de Obsidian (fuera de la bóveda).'
-            : 'En Ryphos: Memorias → Conectar → Obsidian. Se guarda en .obsidian/plugins/ryphos/data.json. Si sincronizas la carpeta .obsidian con iCloud, Dropbox, Obsidian Sync o git, la clave viaja con ella.';
-        new Setting(containerEl)
-            .setName('Código de conexión')
-            .setDesc(keyDesc)
-            .addText((t) => {
-                t.inputEl.type = 'password';
-                t.inputEl.autocomplete = 'off';
-                t.setPlaceholder('rk_…').setValue(this.plugin.getKey()).onChange(async (v) => { await this.plugin.setKey(v.trim()); await this.plugin.applySettings(); });
-            });
-
-        new Setting(containerEl)
-            .setName('URL de la API')
-            .setDesc('Por defecto https://api.ryphos.com')
-            .addText((t) => t.setValue(s.apiUrl).onChange(async (v) => {
-                const url = v.trim().replace(/\/+$/, '');
-                try { assertSecureApiUrl(url); s.apiUrl = url; await this.plugin.applySettings(); } catch { /* se valida al guardar un valor correcto */ }
-            }));
-
-        new Setting(containerEl).setName('Synchronization').setHeading();
-
-        const memSetting = new Setting(containerEl)
+    private rowMemory(setting: Setting): void {
+        const s = this.plugin.settings;
+        setting
             .setName('Memoria a sincronizar')
             .setDesc(s.memoryId ? `Seleccionada: ${s.memoryName || s.memoryId}` : 'Pulsa «Cargar» tras introducir el código de conexión.');
         let dd: HTMLSelectElement | null = null;
-        memSetting.addDropdown((d) => {
+        setting.addDropdown((d) => {
             dd = d.selectEl;
             if (s.memoryId) d.addOption(s.memoryId, s.memoryName || s.memoryId);
             d.setValue(s.memoryId);
@@ -300,10 +302,10 @@ class RyphosSettingTab extends PluginSettingTab {
                 s.memoryId = id; s.memoryName = name;
                 if (!s.folder || s.folder.startsWith('Ryphos/')) s.folder = defaultFolder(name);
                 await this.plugin.applySettings();
-                this.display();
+                this.refresh();
             });
         });
-        memSetting.addButton((b) => b.setButtonText('Cargar').onClick(async () => {
+        setting.addButton((b) => b.setButtonText('Cargar').onClick(async () => {
             try {
                 const mems = await this.plugin.listMemories();
                 if (!mems.length) { new Notice('Ryphos: no hay memorias en esta cuenta.'); return; }
@@ -315,12 +317,15 @@ class RyphosSettingTab extends PluginSettingTab {
                 }
             } catch (e) { new Notice(`Ryphos: ${(e as Error).message}`); }
         }));
+    }
 
-        new Setting(containerEl)
+    private rowFolder(setting: Setting): void {
+        const s = this.plugin.settings;
+        setting
             .setName('Carpeta de la bóveda')
             .setDesc('Solo se lee y escribe dentro de esta carpeta. Por defecto Ryphos/<memoria>.')
             .addText((t) => {
-                t.setPlaceholder('Ryphos/Mi memoria').setValue(s.folder);
+                t.setPlaceholder('Memorias/mi memoria').setValue(s.folder);
                 // se aplica al salir del campo (no en cada tecla): evita sincronizar con una carpeta a medio escribir
                 t.inputEl.addEventListener('blur', () => {
                     void (async () => {
@@ -329,22 +334,74 @@ class RyphosSettingTab extends PluginSettingTab {
                     })();
                 });
             });
+    }
 
-        new Setting(containerEl)
+    private rowInterval(setting: Setting): void {
+        const s = this.plugin.settings;
+        setting
             .setName('Intervalo de sondeo (segundos)')
             .setDesc(`Cada cuánto consulta Ryphos si hay cambios. Mínimo ${MIN_INTERVAL}.`)
             .addText((t) => t.setValue(String(s.intervalSec)).onChange(async (v) => {
                 const n = Math.max(MIN_INTERVAL, Math.floor(Number(v)) || 30);
                 s.intervalSec = n; await this.plugin.applySettings();
             }));
+    }
 
-        new Setting(containerEl)
+    private rowDevice(setting: Setting): void {
+        const s = this.plugin.settings;
+        setting
             .setName('Nombre de este dispositivo')
             .setDesc('Se usa en los ficheros de conflicto: nota.conflict-<dispositivo>.md')
             .addText((t) => t.setValue(s.deviceName).onChange(async (v) => {
                 s.deviceName = v.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 30) || s.deviceName; await this.plugin.persist();
             }));
+    }
 
-        new Setting(containerEl).addButton((b) => b.setButtonText('Sincronizar ahora').setCta().onClick(() => { void this.plugin.syncNow(true); }));
+    private rowSyncNow(setting: Setting): void {
+        setting.addButton((b) => b.setButtonText('Sincronizar ahora').setCta().onClick(() => { void this.plugin.syncNow(true); }));
+    }
+
+    /** Vuelve a pintar tras cambiar la memoria (descripción y carpeta). */
+    private refresh(): void {
+        if (!this.declarative) this.renderLegacy();
+    }
+
+    /** Obsidian 1.13+: ajustes declarativos (buscables). La sección general va arriba, sin encabezado. */
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        this.declarative = true;
+        const row = (name: string, fn: (s: Setting) => void): SettingDefinition => ({ name, render: (setting: Setting) => { fn(setting); } });
+        return [
+            row('Código de conexión', (st) => this.rowKey(st)),
+            row('URL de la API', (st) => this.rowApiUrl(st)),
+            {
+                type: 'group',
+                heading: 'Sincronización',
+                items: [
+                    row('Memoria a sincronizar', (st) => this.rowMemory(st)),
+                    row('Carpeta de la bóveda', (st) => this.rowFolder(st)),
+                    row('Intervalo de sondeo (segundos)', (st) => this.rowInterval(st)),
+                    row('Nombre de este dispositivo', (st) => this.rowDevice(st)),
+                    row('Sincronizar ahora', (st) => this.rowSyncNow(st)),
+                ],
+            },
+        ];
+    }
+
+    /** Respaldo para Obsidian < 1.13 (que no llama a getSettingDefinitions). */
+    display(): void {
+        this.renderLegacy();
+    }
+
+    private renderLegacy(): void {
+        const { containerEl } = this;
+        containerEl.empty();
+        this.rowKey(new Setting(containerEl));
+        this.rowApiUrl(new Setting(containerEl));
+        new Setting(containerEl).setName('Sincronización').setHeading();
+        this.rowMemory(new Setting(containerEl));
+        this.rowFolder(new Setting(containerEl));
+        this.rowInterval(new Setting(containerEl));
+        this.rowDevice(new Setting(containerEl));
+        this.rowSyncNow(new Setting(containerEl));
     }
 }

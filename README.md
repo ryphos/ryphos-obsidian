@@ -55,7 +55,7 @@ Funciona en escritorio y en móvil.
 4. La primera vez se muestra cuántas notas se bajarán y subirán y pide confirmación.
 
 Trata el código como una contraseña. **Dónde se guarda**: con Obsidian 1.11.4 o superior se usa el almacén de secretos de Obsidian
-(fuera de la bóveda; el plugin lo detecta solo, la versión mínima sigue siendo 1.5.0). En versiones anteriores se guarda en
+(fuera de la bóveda; el plugin lo detecta solo, la versión mínima del plugin es 1.6.6). En versiones anteriores se guarda en
 `.obsidian/plugins/ryphos/data.json`, **dentro de la bóveda**: si sincronizas la carpeta `.obsidian` con iCloud, Dropbox, Obsidian Sync o git, la clave viaja con ella
 (excluye `plugins/ryphos/data.json` o actualiza Obsidian). Puedes revocarla en Ryphos cuando quieras.
 

@@ -4,7 +4,7 @@ export function normalizeFolder(input: string): string {
     if (!norm) throw new Error('Indica una carpeta de la bóveda (no puede ser la raíz de la bóveda).');
     if (/^[A-Za-z]:/.test(norm)) throw new Error('La carpeta debe ser relativa a la bóveda.');
     for (const seg of norm.split('/')) {
-        // eslint-disable-next-line no-control-regex
+        // eslint-disable-next-line no-control-regex -- los caracteres de control se rechazan a propósito en nombres de carpeta
         if (seg === '.' || seg === '..' || seg.startsWith('.') || /[<>:"|?*\u0000-\u001f]/.test(seg) || seg.endsWith(' ') || seg.endsWith('.')) {
             throw new Error(`Carpeta no permitida: "${input}" (relativa, sin "..", sin nombres ocultos ni caracteres no válidos).`);
         }
@@ -14,7 +14,7 @@ export function normalizeFolder(input: string): string {
 
 /** Carpeta por defecto: Ryphos/<memoria> con el nombre saneado. */
 export function defaultFolder(memoryName: string): string {
-    // eslint-disable-next-line no-control-regex
+    // eslint-disable-next-line no-control-regex -- los caracteres de control se rechazan a propósito en nombres de carpeta
     const safe = memoryName.replace(/[<>:"|?*\\/\u0000-\u001f]/g, '-').replace(/^\.+/, '').replace(/[ .]+$/, '').trim() || 'Memoria';
     return `Ryphos/${safe}`;
 }
