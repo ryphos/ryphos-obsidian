@@ -38,6 +38,9 @@ Funciona en escritorio y en móvil.
 
 ## Instalación
 
+### Desde Obsidian (recomendado)
+Ajustes → Complementos de la comunidad → Explorar → busca «Ryphos» → Instalar y Activar.
+
 ### Manual
 1. Descarga `main.js` y `manifest.json` de la última release (o compílalos: `npm install && npm run build`).
 2. Cópialos a `<tu-boveda>/.obsidian/plugins/ryphos/`.
